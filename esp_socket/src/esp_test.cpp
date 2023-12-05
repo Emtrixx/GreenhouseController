@@ -1,12 +1,12 @@
 /*
-===============================================================================
+ ===============================================================================
  Name        : main.c
  Author      : $(author)
  Version     :
  Copyright   : $(copyright)
  Description : main definition
-===============================================================================
-*/
+ ===============================================================================
+ */
 
 #if defined (__USE_LPCOPEN)
 #if defined(NO_BOARD_LIB)
@@ -29,13 +29,17 @@
 #include "DigitalIoPin.h"
 #include "LiquidCrystal.h"
 
+#include "utils/Globals.h"
+#include "input/rotaryinput.h"
+#include "ui/Menu.h"
+
 // TODO: insert other definitions and declarations here
 
 /* The following is required if runtime statistics are to be collected
  * Copy the code to the source file where other you initialize hardware */
 extern "C" {
 
-void vConfigureTimerForRunTimeStats( void ) {
+void vConfigureTimerForRunTimeStats(void) {
 	Chip_SCT_Init(LPC_SCTSMALL1);
 	LPC_SCTSMALL1->CONFIG = SCT_CONFIG_32BIT_COUNTER;
 	LPC_SCTSMALL1->CTRL_U = SCT_CTRL_PRE_L(255) | SCT_CTRL_CLRCTR_L; // set prescaler to 256 (255 + 1), and start timer
@@ -44,13 +48,11 @@ void vConfigureTimerForRunTimeStats( void ) {
 }
 /* end runtime statictics collection */
 
-static void idle_delay()
-{
+static void idle_delay() {
 	vTaskDelay(1);
 }
 
-void task1(void *params)
-{
+void task1(void *params) {
 	(void) params;
 
 	retarget_init();
@@ -83,42 +85,75 @@ void task1(void *params)
 	// Print a message to the LCD.
 	lcd->print("MQTT_FreeRTOS");
 
+	Menu menu = Menu();
+	InputEvent inputEvent;
 
-	while(true) {
-		float rh;
+	while (true) {
+		float relativeHumidity;
+		int co2Level;
+		int temperature;
+
 		char buffer[32];
 
-		vTaskDelay(2000);
+//		vTaskDelay(2000);
+		if (xQueueReceive(globalStruct.rotaryEncoderQueue, &inputEvent,
+				5000) == pdTRUE) {
+			menu.handle_input(inputEvent);
+		} else {
+			menu.idle();
+		}
 
-		rh = RH.read()/10.0;
-		snprintf(buffer, 32, "RH=%5.1f%%", rh);
-		printf("%s\n",buffer);
+		switch (menu.get_state()) {
+			case ViewCo2Level: {
+				co2Level = 450;
+				snprintf(buffer, 32, "Co2=%dppm", co2Level);
+				printf("res: %s\n", buffer);
+				break;
+			}
+			case ViewHumidity: {
+				relativeHumidity = RH.read() / 10.0;
+				snprintf(buffer, 32, "RH=%5.1f%%", relativeHumidity);
+				printf("res: %s\n", buffer);
+				break;
+			}
+			case ViewTemperature: {
+				temperature = 23;
+				snprintf(buffer, 32, "Temp=%dC", temperature);
+				printf("res: %s\n", buffer);
+			}
+		}
+
 		lcd->setCursor(0, 1);
 		// Print a message to the LCD.
 		lcd->print(buffer);
-
 	}
 }
 
 extern "C" {
-  void vStartSimpleMQTTDemo( void ); // ugly - should be in a header
+void vStartSimpleMQTTDemo(void); // ugly - should be in a header
 }
 
 int main(void) {
 
 #if defined (__USE_LPCOPEN)
-    // Read clock settings and update SystemCoreClock variable
-    SystemCoreClockUpdate();
+	// Read clock settings and update SystemCoreClock variable
+	SystemCoreClockUpdate();
 #if !defined(NO_BOARD_LIB)
-    // Set up and initialize all required blocks and
-    // functions related to the board hardware
-    Board_Init();
-    // Set the LED to the state of "On"
-    Board_LED_Set(0, true);
+	// Set up and initialize all required blocks and
+	// functions related to the board hardware
+	Board_Init();
+	// Set the LED to the state of "On"
+	Board_LED_Set(0, true);
 #endif
 #endif
 
 	heap_monitor_setup();
+
+	// Setup global state
+	initializeGlobalStruct();
+
+	// Setup input (rotary encoder)
+	setup_input_gpios();
 
 	// initialize RIT (= enable clocking etc.)
 	//Chip_RIT_Init(LPC_RITIMER);
@@ -128,8 +163,8 @@ int main(void) {
 	//NVIC_SetPriority( RITIMER_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY + 1 );
 
 	xTaskCreate(task1, "test",
-			configMINIMAL_STACK_SIZE * 4, NULL, (tskIDLE_PRIORITY + 1UL),
-			(TaskHandle_t *) NULL);
+	configMINIMAL_STACK_SIZE * 4, NULL, (tskIDLE_PRIORITY + 1UL),
+			(TaskHandle_t*) NULL);
 
 	vStartSimpleMQTTDemo();
 	/* Start the scheduler */
