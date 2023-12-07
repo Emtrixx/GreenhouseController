@@ -57,10 +57,15 @@ void task1(void *params) {
 
 	retarget_init();
 
+	/*ModbusMaster node4(240);
+	node4.begin(9600); // all nodes must operate at the same speed!
+	node4.idle(idle_delay); // idle function is called while waiting for reply from slave
 	ModbusMaster node3(241); // Create modbus object that connects to slave id 241 (HMP60)
 	node3.begin(9600); // all nodes must operate at the same speed!
 	node3.idle(idle_delay); // idle function is called while waiting for reply from slave
 	ModbusRegister RH(&node3, 256, true);
+	ModbusRegister temp(&node3, 257, true);
+	ModbusRegister carb(&node4, 256, true);*/
 
 	DigitalIoPin relay(0, 27, DigitalIoPin::output); // CO2 relay
 	relay.write(0);
@@ -105,19 +110,19 @@ void task1(void *params) {
 
 		switch (menu.get_state()) {
 			case ViewCo2Level: {
-				co2Level = 450;
+				co2Level = globalStruct.co2level;
 				snprintf(buffer, 32, "Co2=%dppm", co2Level);
 				printf("res: %s\n", buffer);
 				break;
 			}
 			case ViewHumidity: {
-				relativeHumidity = RH.read() / 10.0;
+				relativeHumidity = globalStruct.humidity;
 				snprintf(buffer, 32, "RH=%5.1f%%", relativeHumidity);
 				printf("res: %s\n", buffer);
 				break;
 			}
 			case ViewTemperature: {
-				temperature = 23;
+				temperature = globalStruct.temperature;
 				snprintf(buffer, 32, "Temp=%dC", temperature);
 				printf("res: %s\n", buffer);
 			}
@@ -126,7 +131,29 @@ void task1(void *params) {
 		lcd->setCursor(0, 1);
 		// Print a message to the LCD.
 		lcd->print(buffer);
+		vTaskDelay(1);
 	}
+}
+
+void modbusTask(void *params) {
+	ModbusMaster gmp252(240);
+	gmp252.begin(9600); // all nodes must operate at the same speed!
+	gmp252.idle(idle_delay); // idle function is called while waiting for reply from slave
+	ModbusMaster hmp60(241); // Create modbus object that connects to slave id 241 (HMP60)
+	hmp60.begin(9600); // all nodes must operate at the same speed!
+	hmp60.idle(idle_delay); // idle function is called while waiting for reply from slave
+
+	ModbusRegister co2(&gmp252, 256, true);
+	ModbusRegister rh(&hmp60, 256, true);
+	ModbusRegister tempc(&hmp60, 257, true);
+
+	while(true) {
+		globalStruct.co2level = co2.read();
+		globalStruct.humidity = rh.read() / 10.0;
+		globalStruct.temperature = tempc.read() / 10.0;
+		vTaskDelay(100);
+	}
+
 }
 
 extern "C" {
@@ -163,8 +190,12 @@ int main(void) {
 	//NVIC_SetPriority( RITIMER_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY + 1 );
 
 	xTaskCreate(task1, "test",
-	configMINIMAL_STACK_SIZE * 4, NULL, (tskIDLE_PRIORITY + 1UL),
-			(TaskHandle_t*) NULL);
+		configMINIMAL_STACK_SIZE * 4, NULL, (tskIDLE_PRIORITY + 1UL),
+		(TaskHandle_t*) NULL);
+
+	xTaskCreate(modbusTask, "modbusTask",
+		configMINIMAL_STACK_SIZE * 4, NULL, (tskIDLE_PRIORITY + 1UL),
+		(TaskHandle_t*) NULL);
 
 	vStartSimpleMQTTDemo();
 	/* Start the scheduler */

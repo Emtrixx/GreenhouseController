@@ -8,6 +8,8 @@
 #ifndef UTILS_GLOBALS_H_
 #define UTILS_GLOBALS_H_
 
+#include <atomic>
+
 #include "FreeRTOS.h"
 #include "semphr.h"
 #include "queue.h"
@@ -15,11 +17,11 @@
 
 typedef struct {
     QueueHandle_t rotaryEncoderQueue;
-    uint32_t co2level;
-    uint32_t humidity;
-    uint32_t temperature;
-    uint32_t valveOpeningPercentage;
-    uint32_t co2SetPoint;
+    std::atomic<int> co2level;
+    std::atomic<int> humidity;
+    std::atomic<int> temperature;
+    std::atomic<int> valveOpeningPercentage;
+    std::atomic<int> co2SetPoint;
 } GlobalStruct_t;
 
 extern GlobalStruct_t globalStruct;
