@@ -30,7 +30,7 @@ void Menu::handle_input(InputEvent inputEvent) {
 		case ViewCo2Level: {
 			switch (inputEvent) {
 				case CW_ROTATION: {
-					set_state(SelectCo2Level);
+					set_state(ViewHumidity);
 					break;
 				}
 				case CCW_ROTATION: {
