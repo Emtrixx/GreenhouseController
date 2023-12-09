@@ -18,4 +18,5 @@ GlobalStruct_t globalStruct;
 
 void initializeGlobalStruct() {
 	globalStruct.rotaryEncoderQueue = xQueueCreate(32, sizeof(InputEvent));
+	globalStruct.co2SetPoint = 421;
 }

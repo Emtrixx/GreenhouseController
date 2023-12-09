@@ -57,19 +57,6 @@ void task1(void *params) {
 
 	retarget_init();
 
-	/*ModbusMaster node4(240);
-	 node4.begin(9600); // all nodes must operate at the same speed!
-	 node4.idle(idle_delay); // idle function is called while waiting for reply from slave
-	 ModbusMaster node3(241); // Create modbus object that connects to slave id 241 (HMP60)
-	 node3.begin(9600); // all nodes must operate at the same speed!
-	 node3.idle(idle_delay); // idle function is called while waiting for reply from slave
-	 ModbusRegister RH(&node3, 256, true);
-	 ModbusRegister temp(&node3, 257, true);
-	 ModbusRegister carb(&node4, 256, true);*/
-
-	DigitalIoPin relay(0, 27, DigitalIoPin::output); // CO2 relay
-	relay.write(0);
-
 //	DigitalIoPin sw_a2(1, 8, DigitalIoPin::pullup, true);
 //	DigitalIoPin sw_a3(0, 5, DigitalIoPin::pullup, true);
 //	DigitalIoPin sw_a4(0, 6, DigitalIoPin::pullup, true);
@@ -152,13 +139,47 @@ void modbusTask(void *params) {
 	ModbusRegister rh(&hmp60, 256, true);
 	ModbusRegister tempc(&hmp60, 257, true);
 
-	while (true) {
+	const TickType_t xCharDelay = 5 / portTICK_PERIOD_MS;
+
+	while(true) {
+		vTaskDelay(xCharDelay);
 		globalStruct.co2level = co2.read();
+		vTaskDelay(xCharDelay);
 		globalStruct.humidity = rh.read() / 10.0;
+		vTaskDelay(xCharDelay);
 		globalStruct.temperature = tempc.read() / 10.0;
-		vTaskDelay(1000);
+		vTaskDelay(50);
 	}
 
+}
+
+void keepCo2levelTask(void *params) {
+	DigitalIoPin relay(0, 27, DigitalIoPin::output); // CO2 relay
+	relay.write(0);
+	int durationOpen, durationClosed, co2level, co2Target, relayPosition = 0;
+	int lastTick = xTaskGetTickCount();
+
+	while(true) {
+		int temp = xTaskGetTickCount();
+		if (relayPosition == 0) {
+			durationClosed =+ (temp - lastTick);
+		} else {
+			durationOpen =+ (temp - lastTick);
+		}
+		lastTick = temp;
+
+
+		co2level = globalStruct.co2level;
+		co2Target = globalStruct.co2SetPoint;
+		if (co2level < co2Target)
+		{
+			relayPosition = 1;
+		} else {
+			relayPosition = 0;
+		}
+		relay.write(relayPosition);
+		vTaskDelay(50);
+	}
 }
 
 extern "C" {
@@ -195,12 +216,18 @@ int main(void) {
 	//NVIC_SetPriority( RITIMER_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY + 1 );
 
 	xTaskCreate(task1, "test",
-	configMINIMAL_STACK_SIZE * 4, NULL, (tskIDLE_PRIORITY + 1UL),
+	configMINIMAL_STACK_SIZE * 3, NULL, (tskIDLE_PRIORITY + 1UL), //If need to reduce, between * 2 and * 3
 			(TaskHandle_t*) NULL);
 
 	xTaskCreate(modbusTask, "modbusTask",
-	configMINIMAL_STACK_SIZE * 4, NULL, (tskIDLE_PRIORITY + 1UL),
+	configMINIMAL_STACK_SIZE * 4, NULL, (tskIDLE_PRIORITY + 1UL), //If need to reduce, between * 3 and * 4
 			(TaskHandle_t*) NULL);
+
+	xTaskCreate(keepCo2levelTask, "keepCo2levelTask",
+	configMINIMAL_STACK_SIZE * 3, NULL, (tskIDLE_PRIORITY + 1UL),
+			(TaskHandle_t*) NULL);
+
+
 
 	vStartSimpleMQTTDemo();
 	/* Start the scheduler */
