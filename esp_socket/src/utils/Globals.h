@@ -20,8 +20,8 @@ typedef struct {
     std::atomic<int> co2level;
     std::atomic<int> humidity;
     std::atomic<int> temperature;
-    std::atomic<int> valveOpeningPercentage;
-    std::atomic<int> co2SetPoint;
+    std::atomic<float> valveOpeningPercentage;
+    std::atomic<int> co2Target;
 } GlobalStruct_t;
 
 extern GlobalStruct_t globalStruct;

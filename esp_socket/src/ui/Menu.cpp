@@ -7,10 +7,12 @@
 
 #include "Menu.h"
 #include "input/rotaryinput.h"
+#include "utils/Globals.h"
 
-Menu::Menu() {
+Menu::Menu(LiquidCrystal* lcd)
+	: lcd{lcd}
+{
 	currentState = ViewCo2Level;
-	idleCounter = 0;
 }
 
 Menu::~Menu() {
@@ -25,8 +27,72 @@ void Menu::set_state(MenuState newState) {
 	currentState = newState;
 }
 
+void Menu::run_menu()
+{
+	InputEvent inputEvent;
+
+	char buffer[32];
+	int relativeHumidity;
+	int co2Level;
+	int temperature;
+	float valvePercentage;
+
+	while (true) {
+
+		switch (currentState) {
+		case ViewCo2Level: {
+			co2Level = globalStruct.co2level;
+			snprintf(buffer, 32, "Co2=%dppm", co2Level);
+			printf("res: %s\n", buffer);
+			break;
+		}
+		case SelectCo2Target: {
+			snprintf(buffer, 32, "Co2=%dppm", co2TargetSelection);
+			printf("res: %s\n", buffer);
+			break;
+		}
+		case ViewHumidity: {
+			relativeHumidity = globalStruct.humidity;
+			snprintf(buffer, 32, "RH=%d%%", relativeHumidity);
+			printf("res: %s\n", buffer);
+			break;
+		}
+		case ViewTemperature: {
+			temperature = globalStruct.temperature;
+			snprintf(buffer, 32, "Temp=%dC", temperature);
+			printf("res: %s\n", buffer);
+			break;
+		}
+		case ViewValvePercentage: {
+			valvePercentage = globalStruct.valveOpeningPercentage;
+			snprintf(buffer, 32, "Valve%%=%.1f", valvePercentage);
+			printf("res: %s\n", buffer);
+		}
+		}
+
+		lcd->clear();
+		lcd->setCursor(0, 0);
+		if (currentState != SelectCo2Target)
+		{
+			lcd->print("Readings:");
+		} else {
+			lcd->print("Set new target:");
+		}
+		lcd->setCursor(0, 1);
+		// Print a message to the LCD.
+		lcd->print(buffer);
+
+		if (xQueueReceive(globalStruct.rotaryEncoderQueue, &inputEvent,
+				5000) == pdTRUE) {
+			handle_input(inputEvent);
+		} else {
+			idle();
+		}
+	}
+}
+
 void Menu::handle_input(InputEvent inputEvent) {
-	switch (get_state()) {
+	switch (currentState) {
 		case ViewCo2Level: {
 			switch (inputEvent) {
 				case CW_ROTATION: {
@@ -34,28 +100,12 @@ void Menu::handle_input(InputEvent inputEvent) {
 					break;
 				}
 				case CCW_ROTATION: {
-					set_state(ViewTemperature);
+					set_state(ViewValvePercentage);
 					break;
 				}
 				case PUSH: {
-					set_state(SelectCo2Level);
-					break;
-				}
-			}
-			break;
-		}
-		case SelectCo2Level: {
-			switch (inputEvent) {
-				case CW_ROTATION: {
-//					TODO: set co2 level
-					break;
-				}
-				case CCW_ROTATION: {
-//					TODO: set co2 level
-					break;
-				}
-				case PUSH: {
-					set_state(ViewCo2Level);
+					co2TargetSelection = globalStruct.co2Target;
+					set_state(SelectCo2Target);
 					break;
 				}
 			}
@@ -72,6 +122,8 @@ void Menu::handle_input(InputEvent inputEvent) {
 					break;
 				}
 				case PUSH: {
+					set_state(SelectCo2Target);
+					co2TargetSelection = globalStruct.co2Target;
 					break;
 				}
 			}
@@ -80,7 +132,7 @@ void Menu::handle_input(InputEvent inputEvent) {
 		case ViewTemperature: {
 			switch (inputEvent) {
 				case CW_ROTATION: {
-					set_state(ViewCo2Level);
+					set_state(ViewValvePercentage);
 					break;
 				}
 				case CCW_ROTATION: {
@@ -88,9 +140,48 @@ void Menu::handle_input(InputEvent inputEvent) {
 					break;
 				}
 				case PUSH: {
+					set_state(SelectCo2Target);
+					co2TargetSelection = globalStruct.co2Target;
 					break;
 				}
 
+			}
+			break;
+		}
+		case ViewValvePercentage: {
+			switch (inputEvent) {
+				case CW_ROTATION: {
+					set_state(ViewCo2Level);
+					break;
+				}
+				case CCW_ROTATION: {
+					set_state(ViewTemperature);
+					break;
+				}
+				case PUSH: {
+					set_state(SelectCo2Target);
+					co2TargetSelection = globalStruct.co2Target;
+					break;
+				}
+
+			}
+			break;
+		}
+		case SelectCo2Target: {
+			switch (inputEvent) {
+				case CW_ROTATION: {
+					co2TargetSelection++;
+					break;
+				}
+				case CCW_ROTATION: {
+					co2TargetSelection--;
+					break;
+				}
+				case PUSH: {
+					globalStruct.co2Target = co2TargetSelection;
+					set_state(ViewTemperature);
+					break;
+				}
 			}
 			break;
 		}
@@ -98,13 +189,18 @@ void Menu::handle_input(InputEvent inputEvent) {
 }
 
 void Menu::idle() {
-	if(idleCounter == 0) {
-		set_state(ViewCo2Level);
-	} else if (idleCounter == 1) {
-		set_state(ViewHumidity);
-	} else if (idleCounter == 2) {
-		set_state(ViewTemperature);
+	if(currentState == SelectCo2Target)
+	{
+		return;
 	}
 
-	idleCounter = (idleCounter + 1) % 3;
+	if(currentState == ViewCo2Level) {
+		set_state(ViewHumidity);
+	} else if (currentState == ViewHumidity) {
+		set_state(ViewTemperature);
+	} else if (currentState == ViewTemperature) {
+		set_state(ViewValvePercentage);
+	} else if (currentState == ViewValvePercentage) {
+		set_state(ViewCo2Level);
+	}
 }

@@ -9,10 +9,11 @@
 #define UI_MENU_CPP_
 
 #include "input/rotaryinput.h"
+#include "LiquidCrystal.h"
 
 enum MenuState {
 	ViewCo2Level = 0,
-	SelectCo2Level,
+	SelectCo2Target,
 	ViewHumidity,
 	ViewTemperature,
 	ViewValvePercentage,
@@ -21,17 +22,18 @@ enum MenuState {
 
 class Menu {
 public:
-	Menu();
+	Menu(LiquidCrystal* lcd);
 	virtual ~Menu();
 	void set_state(MenuState newState);
 	MenuState get_state();
+	void run_menu();
 	void handle_input(InputEvent inputEvent);
 	void idle();
 private:
 	MenuState currentState;
-	int idleCounter;
+	int co2TargetSelection;
+	LiquidCrystal* lcd;
 };
-
 
 #endif /* UI_MENU_CPP_ */
 

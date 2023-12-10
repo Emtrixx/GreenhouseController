@@ -77,54 +77,8 @@ void task1(void *params) {
 	// Print a message to the LCD.
 	lcd->print("MQTT_FreeRTOS");
 
-	Menu menu = Menu();
-	InputEvent inputEvent;
-
-	char buffer[32];
-	float relativeHumidity;
-	int co2Level;
-	int temperature;
-
-	while (true) {
-
-		switch (menu.get_state()) {
-		case ViewCo2Level: {
-			co2Level = globalStruct.co2level;
-			snprintf(buffer, 32, "Co2=%dppm   ", co2Level);
-			printf("res: %s\n", buffer);
-			break;
-		}
-		case SelectCo2Level: {
-			co2Level = globalStruct.co2SetPoint;
-			snprintf(buffer, 32, "Co2=%dppm   ", co2Level);
-			printf("res: %s\n", buffer);
-			break;
-		}
-		case ViewHumidity: {
-			relativeHumidity = globalStruct.humidity;
-			snprintf(buffer, 32, "RH=%5.1f%%   ", relativeHumidity);
-			printf("res: %s\n", buffer);
-			break;
-		}
-		case ViewTemperature: {
-			temperature = globalStruct.temperature;
-			snprintf(buffer, 32, "Temp=%dC   ", temperature);
-			printf("res: %s\n", buffer);
-			break;
-		}
-		}
-
-		lcd->setCursor(0, 1);
-		// Print a message to the LCD.
-		lcd->print(buffer);
-
-		if (xQueueReceive(globalStruct.rotaryEncoderQueue, &inputEvent,
-				5000) == pdTRUE) {
-			menu.handle_input(inputEvent);
-		} else {
-			menu.idle();
-		}
-	}
+	Menu menu = Menu(lcd);
+	menu.run_menu();
 }
 
 void modbusTask(void *params) {
@@ -156,21 +110,26 @@ void modbusTask(void *params) {
 void keepCo2levelTask(void *params) {
 	DigitalIoPin relay(0, 27, DigitalIoPin::output); // CO2 relay
 	relay.write(0);
-	int durationOpen, durationClosed, co2level, co2Target, relayPosition = 0;
+	int durationOpen = 0;
+	int durationClosed = 0;
+	int co2level = 0;
+	int co2Target = 0;
+	int relayPosition = 0;
 	int lastTick = xTaskGetTickCount();
 
 	while(true) {
 		int temp = xTaskGetTickCount();
 		if (relayPosition == 0) {
-			durationClosed =+ (temp - lastTick);
+			durationClosed = durationClosed + (temp - lastTick);
 		} else {
-			durationOpen =+ (temp - lastTick);
+			durationOpen = durationOpen + (temp - lastTick);
 		}
 		lastTick = temp;
-
+		float opening = (1.0*durationOpen / (1.0*durationOpen + durationClosed)) * 100.0;
+		globalStruct.valveOpeningPercentage = opening;
 
 		co2level = globalStruct.co2level;
-		co2Target = globalStruct.co2SetPoint;
+		co2Target = globalStruct.co2Target;
 		if (co2level < co2Target)
 		{
 			relayPosition = 1;
