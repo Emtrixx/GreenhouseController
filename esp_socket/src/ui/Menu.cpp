@@ -8,6 +8,7 @@
 #include "Menu.h"
 #include "input/rotaryinput.h"
 #include "utils/Globals.h"
+#include "utils/EepromUtil.h"
 
 Menu::Menu(LiquidCrystal* lcd)
 	: lcd{lcd}
@@ -170,15 +171,22 @@ void Menu::handle_input(InputEvent inputEvent) {
 		case SelectCo2Target: {
 			switch (inputEvent) {
 				case CW_ROTATION: {
-					co2TargetSelection++;
+					if (co2TargetSelection < 2000) {
+						co2TargetSelection++;
+					}
 					break;
 				}
 				case CCW_ROTATION: {
-					co2TargetSelection--;
+					if (co2TargetSelection > 200) {
+						co2TargetSelection--;
+					}
 					break;
 				}
 				case PUSH: {
 					globalStruct.co2Target = co2TargetSelection;
+					if (saveTargetValueEeprom(co2TargetSelection) != 0) {
+						printf("Failed to save target to EEPROM\n");
+					}
 					set_state(ViewTemperature);
 					break;
 				}

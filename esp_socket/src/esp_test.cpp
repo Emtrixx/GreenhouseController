@@ -30,6 +30,7 @@
 #include "LiquidCrystal.h"
 
 #include "utils/Globals.h"
+#include "utils/EepromUtil.h"
 #include "input/rotaryinput.h"
 #include "ui/Menu.h"
 
@@ -55,7 +56,6 @@ static void idle_delay() {
 void task1(void *params) {
 	(void) params;
 
-	retarget_init();
 
 //	DigitalIoPin sw_a2(1, 8, DigitalIoPin::pullup, true);
 //	DigitalIoPin sw_a3(0, 5, DigitalIoPin::pullup, true);
@@ -163,6 +163,25 @@ int main(void) {
 
 	// Setup global state
 	initializeGlobalStruct();
+	//reroute to UART
+	retarget_init();
+	Chip_Clock_EnablePeriphClock(SYSCTL_CLOCK_EEPROM);
+	Chip_SYSCTL_PeriphReset(RESET_EEPROM);
+
+	int readValue = readTargetValueEeprom(); //negative if failed
+	if (readValue < 0)
+	{
+		printf("Failed to get saved Co2 target, default to 400ppm\n");
+		globalStruct.co2Target = 400;
+	} else if (readValue > 2000 || readValue < 200) // Bad read, value out of acceptable range
+	{
+		printf("Value %d out of range, default to 400ppm\n", readValue);
+		globalStruct.co2Target = 400;
+	} else
+	{
+		printf("Successfully read Co2 target: %d\n", readValue);
+		globalStruct.co2Target = readValue;
+	}
 
 	// Setup input (rotary encoder)
 	setup_input_gpios();
