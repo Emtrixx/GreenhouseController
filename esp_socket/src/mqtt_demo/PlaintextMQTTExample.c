@@ -709,7 +709,7 @@ static void prvMQTTPublishToTopic(MQTTContext_t *pxMQTTContext) {
 	MQTTPublishInfo_t xMQTTPublishInfo;
 
 	char msg[60];
-	sprintf(msg, "field1=%d&field2=%d&field3=%d&field4=%f&field5=%d", globalStruct.co2level,
+	sprintf(msg, "field1=%d&field2=%d&field3=%d&field4=%.2f&field5=%d", globalStruct.co2level,
 			globalStruct.humidity, globalStruct.temperature, globalStruct.valveOpeningPercentage, globalStruct.co2Target);
 	int len = strlen(msg);
 	sprintf(&msg[len], " %d", (int) xTaskGetTickCount());
