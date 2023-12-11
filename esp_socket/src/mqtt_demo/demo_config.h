@@ -79,7 +79,13 @@ extern void vLoggingPrintf( const char * pcFormatString,
  *
  * #define democonfigCLIENT_IDENTIFIER				"insert here."
  */
-#define democonfigCLIENT_IDENTIFIER				"ESP-MQTT-01"
+//#define SECRET_MQTT_USERNAME "CjUiBzYtOy8WMTwpCg4YDyE"
+//#define SECRET_MQTT_PASSWORD "DiqSrOOStPGhnUn5EIgsRGwM"
+#define SECRET_MQTT_USERNAME "jesse"
+#define SECRET_MQTT_PASSWORD "12345"
+#define SECRET_MQTT_CLIENT_ID "CjUiBzYtOy8WMTwpCg4YDyE"
+
+#define democonfigCLIENT_IDENTIFIER				"CjUiBzYtOy8WMTwpCg4YDyE"
 
 /**
  * @brief MQTT broker end point to connect to.
@@ -89,7 +95,8 @@ extern void vLoggingPrintf( const char * pcFormatString,
  *
  * #define democonfigMQTT_BROKER_ENDPOINT				"insert here."
  */
-#define democonfigMQTT_BROKER_ENDPOINT				"192.168.1.254"
+//#define democonfigMQTT_BROKER_ENDPOINT				"mqtt3.thingspeak.com"
+#define democonfigMQTT_BROKER_ENDPOINT				"192.168.162.226"
 
 /**
  * @brief The port to use for the demo.
@@ -108,8 +115,10 @@ extern void vLoggingPrintf( const char * pcFormatString,
 
 
 #if 1
-#define WIFI_SSID	    "SmartIotMQTT"
-#define WIFI_PASS       "SmartIot"
+//#define WIFI_SSID	    "SmartIotMQTT"
+//#define WIFI_PASS       "SmartIot"
+#define WIFI_SSID	    "JessePhone"
+#define WIFI_PASS       "q1w2e3r4"
 #endif
 
 #endif /* DEMO_CONFIG_H */
