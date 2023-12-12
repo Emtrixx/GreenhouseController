@@ -115,16 +115,12 @@ void keepCo2levelTask(void *params) {
 	int co2level = 0;
 	int co2Target = 0;
 	int relayPosition = 0;
-	int lastTick = xTaskGetTickCount();
+	TickType_t totalWaitTime, openingTime;
+	openingTime = 2000;
 
 	while(true) {
-		int temp = xTaskGetTickCount();
-		if (relayPosition == 0) {
-			durationClosed = durationClosed + (temp - lastTick);
-		} else {
-			durationOpen = durationOpen + (temp - lastTick);
-		}
-		lastTick = temp;
+		totalWaitTime = 30000;
+
 		float opening = (1.0*durationOpen / (1.0*durationOpen + durationClosed)) * 100.0;
 		globalStruct.valveOpeningPercentage = opening;
 
@@ -133,11 +129,17 @@ void keepCo2levelTask(void *params) {
 		if (co2level < co2Target)
 		{
 			relayPosition = 1;
+			relay.write(relayPosition);
+			vTaskDelay(openingTime);
+			totalWaitTime -= openingTime;
+			relayPosition = 0;
+			relay.write(relayPosition);
+			durationOpen += openingTime;
 		} else {
 			relayPosition = 0;
 		}
-		relay.write(relayPosition);
-		vTaskDelay(50);
+		durationClosed += totalWaitTime;
+		vTaskDelay(totalWaitTime);
 	}
 }
 
@@ -202,7 +204,7 @@ int main(void) {
 			(TaskHandle_t*) NULL);
 
 	xTaskCreate(keepCo2levelTask, "keepCo2levelTask",
-	configMINIMAL_STACK_SIZE * 3, NULL, (tskIDLE_PRIORITY + 1UL),
+	configMINIMAL_STACK_SIZE * 3, NULL, (tskIDLE_PRIORITY + 2UL),
 			(TaskHandle_t*) NULL);
 
 

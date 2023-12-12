@@ -56,7 +56,7 @@ void PIN_INT0_IRQHandler(void) {
 
 	// Debounce
 	currentActivation = xTaskGetTickCountFromISR();
-	if (currentActivation - lastActivation >= 30) {
+	if (currentActivation - lastActivation >= 3) {
 
 		InputEvent val = CW_ROTATION;
 		bool pinStateB = Chip_GPIO_GetPinState(LPC_GPIO, PORT_0, ROT_B_PIN);
@@ -80,7 +80,7 @@ void PIN_INT1_IRQHandler(void) {
 
 	// Debounce
 	currentActivationPush = xTaskGetTickCountFromISR();
-	if (currentActivationPush - lastActivationPush >= 30) {
+	if (currentActivationPush - lastActivationPush >= 50) {
 
 		InputEvent val = PUSH;
 
@@ -131,7 +131,8 @@ void setup_input_gpios(void) {
 
 	Chip_PININT_ClearIntStatus(LPC_GPIO_PIN_INT, PININTCH(PININT_INDEX_2));
 	Chip_PININT_SetPinModeEdge(LPC_GPIO_PIN_INT, PININTCH(PININT_INDEX_2));
-	Chip_PININT_EnableIntLow(LPC_GPIO_PIN_INT, PININTCH(PININT_INDEX_2));
+//	Chip_PININT_EnableIntLow(LPC_GPIO_PIN_INT, PININTCH(PININT_INDEX_2));
+	Chip_PININT_EnableIntHigh(LPC_GPIO_PIN_INT, PININTCH(PININT_INDEX_2));
 
 	/* Enable interrupt in the NVIC */
 	NVIC_ClearPendingIRQ(PININT_NVIC_NAME);

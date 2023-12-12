@@ -173,7 +173,8 @@
  * @brief Delay between MQTT publishes. Note that the process loop also has a
  * timeout, so the total time between publishes is the sum of the two delays.
  */
-#define mqttexampleDELAY_BETWEEN_PUBLISHES           ( pdMS_TO_TICKS( 299500U ) )
+//#define mqttexampleDELAY_BETWEEN_PUBLISHES           ( pdMS_TO_TICKS( 299500U ) )
+#define mqttexampleDELAY_BETWEEN_PUBLISHES           ( pdMS_TO_TICKS( 59500U ) )
 
 /**
  * @brief Transport timeout in milliseconds for transport send and receive.
